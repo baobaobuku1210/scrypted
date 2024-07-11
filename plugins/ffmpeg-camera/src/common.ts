@@ -131,10 +131,9 @@ export abstract class CameraProviderBase<T extends ResponseMediaStreamOptions> e
     constructor(nativeId?: string) {
         super(nativeId);
 
-        for (const camId of deviceManager.getNativeIds()) {
-            if (camId)
-                this.getDevice(camId);
-        }
+        this.systemDevice = {
+            deviceCreator: this.getScryptedDeviceCreator(),
+        };
     }
 
     async createDevice(settings: DeviceCreatorSettings, nativeId?: ScryptedNativeId): Promise<string> {
@@ -178,6 +177,7 @@ export abstract class CameraProviderBase<T extends ResponseMediaStreamOptions> e
     }
 
     abstract createCamera(nativeId: string): CameraBase<T>;
+    abstract getScryptedDeviceCreator(): string;
 
     getDevice(nativeId: string) {
         let ret = this.devices.get(nativeId);

@@ -888,7 +888,10 @@ class ScryptedCloud extends ScryptedDeviceBase implements OauthClient, Settings,
         this.proxy.on('proxyRes', (res, req) => {
             res.headers['X-Scrypted-Cloud'] = req.headers['x-scrypted-cloud'];
             res.headers['X-Scrypted-Direct-Address'] = req.headers['x-scrypted-direct-address'];
-            res.headers['X-Scrypted-Cloud-Address'] = this.cloudflareTunnel;
+            let domain = this.cloudflareTunnel;
+            if (!domain && this.storageSettings.values.forwardingMode === 'Custom Domain' && this.storageSettings.values.hostname)
+                domain = `https://${this.storageSettings.values.hostname}`;
+            res.headers['X-Scrypted-Cloud-Address'] = domain;
             res.headers['Access-Control-Expose-Headers'] = 'X-Scrypted-Cloud, X-Scrypted-Direct-Address, X-Scrypted-Cloud-Address';
         });
 
@@ -1016,6 +1019,10 @@ class ScryptedCloud extends ScryptedDeviceBase implements OauthClient, Settings,
 
                         const lines = string.split('\n');
                         for (const line of lines) {
+                            if (line.includes('Register tunnel error') && deferred.finished ) {
+                                this.console.warn('Cloudflare registration failed after tunnel started. The old tunnel may be invalid. Terminating.');
+                                cloudflareTunnel.child.kill();
+                            }
                             if (line.includes('hostname'))
                                 this.console.log(line);
                             const match = /config=(".*?}")/gm.exec(line)

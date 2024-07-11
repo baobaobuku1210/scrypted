@@ -1185,6 +1185,34 @@ export interface Settings {
   putSetting(key: string, value: SettingValue): Promise<void>;
 
 }
+
+/**
+ * SystemDevices are listed in the Scrypted UI.
+ */
+export interface ScryptedSystemDevice {
+  /**
+   * Type of device that will be created by this DeviceCreator.
+   * For example: Example Corp Camera or ACME Light Switch.
+   */
+  systemDevice?: ScryptedSystemDeviceInfo;
+}
+
+export interface ScryptedSystemDeviceInfo {
+  /**
+   * The name of the device as seen in System Settings.
+   */
+  settings?: string;
+  /**
+   * The description of device that will be created by this DeviceCreator.
+   * For example: Example Corp Camera or ACME Light Switch.
+   */
+  deviceCreator?: string;
+}
+
+export interface ScryptedSettings {
+}
+export interface ScryptedDeviceCreator {
+}
 export interface BinarySensor {
   binaryState?: boolean;
 }
@@ -1987,7 +2015,7 @@ export interface Setting {
   subgroup?: string;
   description?: string;
   placeholder?: string;
-  type?: 'string' | 'password' | 'number' | 'boolean' | 'device' | 'integer' | 'button' | 'clippath' | 'interface' | 'qrcode' | 'textarea' | 'date' | 'time' | 'datetime';
+  type?: 'string' | 'password' | 'number' | 'boolean' | 'device' | 'integer' | 'button' | 'clippath' | 'interface' | 'html' | 'textarea' | 'date' | 'time' | 'datetime' | 'day' | 'script';
   /**
    * The range of allowed numbers, if any, when the type is 'number'.
    */
@@ -2101,6 +2129,10 @@ export enum ScryptedInterface {
   ScryptedUser = "ScryptedUser",
   VideoFrameGenerator = 'VideoFrameGenerator',
   StreamService = 'StreamService',
+
+  ScryptedSystemDevice = "ScryptedSystemDevice",
+  ScryptedDeviceCreator = "ScryptedDeviceCreator",
+  ScryptedSettings = "ScryptedSettings",
 }
 
 /**

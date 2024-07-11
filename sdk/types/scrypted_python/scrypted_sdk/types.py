@@ -172,8 +172,11 @@ class ScryptedInterface(str, Enum):
     Scene = "Scene"
     Scriptable = "Scriptable"
     ScryptedDevice = "ScryptedDevice"
+    ScryptedDeviceCreator = "ScryptedDeviceCreator"
     ScryptedPlugin = "ScryptedPlugin"
     ScryptedPluginRuntime = "ScryptedPluginRuntime"
+    ScryptedSettings = "ScryptedSettings"
+    ScryptedSystemDevice = "ScryptedSystemDevice"
     ScryptedUser = "ScryptedUser"
     SecuritySystem = "SecuritySystem"
     Settings = "Settings"
@@ -794,6 +797,11 @@ class ScryptedRuntimeArguments(TypedDict):
     arguments: list[str]
     executable: str
 
+class ScryptedSystemDeviceInfo(TypedDict):
+
+    deviceCreator: str  # The description of device that will be created by this DeviceCreator. For example: Example Corp Camera or ACME Light Switch.
+    settings: str  # The name of the device as seen in System Settings.
+
 class ScryptedUserAccessControl(TypedDict):
     """ScryptedUserAccessControl describes the list of devices that may be accessed by the user."""
 
@@ -820,7 +828,7 @@ class Setting(TypedDict):
     readonly: bool
     subgroup: str
     title: str
-    type: Any | Any | Any | Any | Any | Any | Any | Any | Any | Any | Any | Any | Any | Any
+    type: Any | Any | Any | Any | Any | Any | Any | Any | Any | Any | Any | Any | Any | Any | Any | Any
     value: SettingValue
 
 class TemperatureCommand(TypedDict):
@@ -1388,6 +1396,11 @@ class ScryptedDevice:
         pass
 
 
+class ScryptedDeviceCreator:
+
+
+    pass
+
 class ScryptedPlugin:
 
     async def getPluginJson(self) -> Any:
@@ -1397,6 +1410,16 @@ class ScryptedPlugin:
 class ScryptedPluginRuntime:
 
     scryptedRuntimeArguments: ScryptedRuntimeArguments
+
+class ScryptedSettings:
+
+
+    pass
+
+class ScryptedSystemDevice:
+    """SystemDevices are listed in the Scrypted UI."""
+
+    systemDevice: ScryptedSystemDeviceInfo  # Type of device that will be created by this DeviceCreator. For example: Example Corp Camera or ACME Light Switch.
 
 class ScryptedUser:
     """ScryptedUser represents a user managed by Scrypted. This interface can not be implemented, only extended by Mixins."""
@@ -1786,6 +1809,7 @@ class ScryptedInterfaceProperty(str, Enum):
     humiditySetting = "humiditySetting"
     fan = "fan"
     applicationInfo = "applicationInfo"
+    systemDevice = "systemDevice"
 
 class ScryptedInterfaceMethods(str, Enum):
     listen = "listen"
@@ -2390,6 +2414,14 @@ class DeviceState:
     @applicationInfo.setter
     def applicationInfo(self, value: LauncherApplicationInfo):
         self.setScryptedProperty("applicationInfo", value)
+
+    @property
+    def systemDevice(self) -> ScryptedSystemDeviceInfo:
+        return self.getScryptedProperty("systemDevice")
+
+    @systemDevice.setter
+    def systemDevice(self, value: ScryptedSystemDeviceInfo):
+        self.setScryptedProperty("systemDevice", value)
 
 ScryptedInterfaceDescriptors = {
   "ScryptedDevice": {
@@ -3092,6 +3124,23 @@ ScryptedInterfaceDescriptors = {
     "methods": [
       "connectStream"
     ],
+    "properties": []
+  },
+  "ScryptedSystemDevice": {
+    "name": "ScryptedSystemDevice",
+    "methods": [],
+    "properties": [
+      "systemDevice"
+    ]
+  },
+  "ScryptedDeviceCreator": {
+    "name": "ScryptedDeviceCreator",
+    "methods": [],
+    "properties": []
+  },
+  "ScryptedSettings": {
+    "name": "ScryptedSettings",
+    "methods": [],
     "properties": []
   }
 }

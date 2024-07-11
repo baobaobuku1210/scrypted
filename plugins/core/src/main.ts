@@ -66,6 +66,10 @@ class ScryptedCore extends ScryptedDeviceBase implements HttpRequestHandler, Dev
     constructor() {
         super();
 
+        this.systemDevice = {
+            settings: "General",
+        }
+
         checkLxcDependencies();
 
         this.indexHtml = readFileAsString('dist/index.html');
@@ -85,7 +89,7 @@ class ScryptedCore extends ScryptedDeviceBase implements HttpRequestHandler, Dev
                 {
                     name: 'Scripts',
                     nativeId: ScriptCoreNativeId,
-                    interfaces: [ScryptedInterface.DeviceProvider, ScryptedInterface.DeviceCreator, ScryptedInterface.Readme],
+                    interfaces: [ScryptedInterface.ScryptedSystemDevice, ScryptedInterface.ScryptedDeviceCreator, ScryptedInterface.DeviceProvider, ScryptedInterface.DeviceCreator, ScryptedInterface.Readme],
                     type: ScryptedDeviceType.Builtin,
                 },
             );
@@ -126,7 +130,7 @@ class ScryptedCore extends ScryptedDeviceBase implements HttpRequestHandler, Dev
                 {
                     name: 'Automations',
                     nativeId: AutomationCoreNativeId,
-                    interfaces: [ScryptedInterface.DeviceProvider, ScryptedInterface.DeviceCreator, ScryptedInterface.Readme],
+                    interfaces: [ScryptedInterface.ScryptedSystemDevice, ScryptedInterface.ScryptedDeviceCreator, ScryptedInterface.DeviceProvider, ScryptedInterface.DeviceCreator, ScryptedInterface.Readme],
                     type: ScryptedDeviceType.Builtin,
                 },
             );
@@ -148,7 +152,7 @@ class ScryptedCore extends ScryptedDeviceBase implements HttpRequestHandler, Dev
                 {
                     name: 'Device Groups',
                     nativeId: AggregateCoreNativeId,
-                    interfaces: [ScryptedInterface.DeviceProvider, ScryptedInterface.DeviceCreator, ScryptedInterface.Readme],
+                    interfaces: [ScryptedInterface.ScryptedSystemDevice, ScryptedInterface.ScryptedDeviceCreator, ScryptedInterface.DeviceProvider, ScryptedInterface.DeviceCreator, ScryptedInterface.Readme],
                     type: ScryptedDeviceType.Builtin,
                 },
             );
@@ -160,7 +164,7 @@ class ScryptedCore extends ScryptedDeviceBase implements HttpRequestHandler, Dev
                 {
                     name: 'Scrypted Users',
                     nativeId: UsersNativeId,
-                    interfaces: [ScryptedInterface.DeviceProvider, ScryptedInterface.DeviceCreator, ScryptedInterface.Readme],
+                    interfaces: [ScryptedInterface.ScryptedSystemDevice, ScryptedInterface.ScryptedDeviceCreator, ScryptedInterface.DeviceProvider, ScryptedInterface.DeviceCreator, ScryptedInterface.Readme],
                     type: ScryptedDeviceType.Builtin,
                 },
             );

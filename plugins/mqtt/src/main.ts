@@ -362,6 +362,10 @@ export class MqttProvider extends ScryptedDeviceBase implements DeviceProvider, 
     constructor(nativeId?: string) {
         super(nativeId);
 
+        this.systemDevice = {
+            deviceCreator: 'MQTT Device',
+        };
+
         this.maybeEnableBroker();
 
         for (const deviceId of deviceManager.getNativeIds()) {
@@ -391,7 +395,8 @@ export class MqttProvider extends ScryptedDeviceBase implements DeviceProvider, 
     }
 
     async createDevice(settings: DeviceCreatorSettings): Promise<string> {
-        const { name, template } = settings;
+        let { name, template } = settings;
+        name = name || 'New MQTT Device';
         if (!template || template === MQTT_AUTODISCOVERY)
             return this.newAutoDiscovery(name.toString());
 

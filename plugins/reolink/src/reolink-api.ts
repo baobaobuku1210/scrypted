@@ -1,12 +1,10 @@
-import { AuthFetchCredentialState, AuthFetchOptions, authHttpFetch } from '@scrypted/common/src/http-auth-fetch';
-import { EventEmitter } from 'events';
-import https, { RequestOptions } from 'https';
+import { AuthFetchCredentialState, authHttpFetch } from '@scrypted/common/src/http-auth-fetch';
 import { PassThrough, Readable } from 'stream';
-import { HttpFetchOptions, HttpFetchResponseType } from '../../../server/src/fetch/http-fetch';
+import { HttpFetchOptions } from '../../../server/src/fetch/http-fetch';
 
-import { getMotionState, reolinkHttpsAgent } from './probe';
-import { PanTiltZoomCommand } from "@scrypted/sdk";
 import { sleep } from "@scrypted/common/src/sleep";
+import { PanTiltZoomCommand } from "@scrypted/sdk";
+import { DevInfo, getLoginParameters } from './probe';
 
 export interface Enc {
     audio: number;
@@ -26,28 +24,6 @@ export interface Stream {
     width: number;
 }
 
-export interface DevInfo {
-    B485: number;
-    IOInputNum: number;
-    IOOutputNum: number;
-    audioNum: number;
-    buildDay: string;
-    cfgVer: string;
-    channelNum: number;
-    detail: string;
-    diskNum: number;
-    exactType: string;
-    firmVer: string;
-    frameworkVer: number;
-    hardVer: string;
-    model: string;
-    name: string;
-    pakSuffix: string;
-    serial: string;
-    type: string;
-    wifi: number;
-}
-
 export interface AIDetectionState {
     alarm_state: number;
     support: number;
@@ -65,6 +41,8 @@ export type SirenResponse = {
 
 export class ReolinkCameraClient {
     credential: AuthFetchCredentialState;
+    parameters: Record<string, string>;
+    tokenLease: number;
 
     constructor(public host: string, public username: string, public password: string, public channelId: number, public console: Console) {
         this.credential = {
@@ -73,11 +51,9 @@ export class ReolinkCameraClient {
         };
     }
 
-    async request(urlOrOptions: string | URL | HttpFetchOptions<Readable>, body?: Readable) {
+    private async request(options: HttpFetchOptions<Readable>, body?: Readable) {
         const response = await authHttpFetch({
-            ...typeof urlOrOptions !== 'string' && !(urlOrOptions instanceof URL) ? urlOrOptions : {
-                url: urlOrOptions,
-            },
+            ...options,
             rejectUnauthorized: false,
             credential: this.credential,
             body,
@@ -85,14 +61,34 @@ export class ReolinkCameraClient {
         return response;
     }
 
+    async login() {
+        if (this.tokenLease > Date.now()) {
+            return;
+        }
+
+        this.console.log(`token expired at ${this.tokenLease}, renewing...`);
+
+        const { parameters, leaseTimeSeconds } = await getLoginParameters(this.host, this.username, this.password);
+        this.parameters = parameters
+        this.tokenLease = Date.now() + 1000 * leaseTimeSeconds;
+    }
+
+    async requestWithLogin(options: HttpFetchOptions<Readable>, body?: Readable) {
+        await this.login();
+        const url = options.url as URL;
+        const params = url.searchParams;
+        for (const [k, v] of Object.entries(this.parameters)) {
+            params.set(k, v);
+        }
+        return this.request(options, body);
+    }
+
     async reboot() {
         const url = new URL(`http://${this.host}/api.cgi`);
         const params = url.searchParams;
         params.set('cmd', 'Reboot');
-        params.set('user', this.username);
-        params.set('password', this.password);
-        const response = await this.request({
-            url: url.toString(),
+        const response = await this.requestWithLogin({
+            url,
             responseType: 'json',
         });
         return {
@@ -111,7 +107,18 @@ export class ReolinkCameraClient {
     //     }
     //  ]
     async getMotionState() {
-        return getMotionState(this.credential, this.username, this.password, this.host, this.channelId);
+        const url = new URL(`http://${this.host}/api.cgi`);
+        const params = url.searchParams;
+        params.set('cmd', 'GetMdState');
+        params.set('channel', this.channelId.toString());
+        const response = await this.requestWithLogin({
+            url,
+            responseType: 'json',
+        });
+        return {
+            value: !!response.body?.[0]?.value?.state,
+            data: response.body,
+        };
     }
 
     async getAiState() {
@@ -119,9 +126,7 @@ export class ReolinkCameraClient {
         const params = url.searchParams;
         params.set('cmd', 'GetAiState');
         params.set('channel', this.channelId.toString());
-        params.set('user', this.username);
-        params.set('password', this.password);
-        const response = await this.request({
+        const response = await this.requestWithLogin({
             url,
             responseType: 'json',
         });
@@ -136,12 +141,15 @@ export class ReolinkCameraClient {
         const params = url.searchParams;
         params.set('cmd', 'GetAbility');
         params.set('channel', this.channelId.toString());
-        params.set('user', this.username);
-        params.set('password', this.password);
-        const response = await this.request({
+        const response = await this.requestWithLogin({
             url,
             responseType: 'json',
         });
+        const error = response.body?.[0]?.error;
+        if (error) {
+            this.console.error('error during call to getAbility', error);
+            throw new Error('error during call to getAbility');
+        }
         return {
             value: response.body?.[0]?.value || response.body?.value,
             data: response.body,
@@ -154,10 +162,8 @@ export class ReolinkCameraClient {
         params.set('cmd', 'Snap');
         params.set('channel', this.channelId.toString());
         params.set('rs', Date.now().toString());
-        params.set('user', this.username);
-        params.set('password', this.password);
 
-        const response = await this.request({
+        const response = await this.requestWithLogin({
             url,
             timeout,
         });
@@ -171,9 +177,7 @@ export class ReolinkCameraClient {
         params.set('cmd', 'GetEnc');
         // is channel used on this call?
         params.set('channel', this.channelId.toString());
-        params.set('user', this.username);
-        params.set('password', this.password);
-        const response = await this.request({
+        const response = await this.requestWithLogin({
             url,
             responseType: 'json',
         });
@@ -185,22 +189,22 @@ export class ReolinkCameraClient {
         const url = new URL(`http://${this.host}/api.cgi`);
         const params = url.searchParams;
         params.set('cmd', 'GetDevInfo');
-        params.set('user', this.username);
-        params.set('password', this.password);
-        const response = await this.request({
+        const response = await this.requestWithLogin({
             url,
             responseType: 'json',
         });
-
+        const error = response.body?.[0]?.error;
+        if (error) {
+            this.console.error('error during call to getDeviceInfo', error);
+            throw new Error('error during call to getDeviceInfo');
+        }
         return response.body?.[0]?.value?.DevInfo;
     }
 
-    async ptzOp(op: string) {
+    private async ptzOp(op: string) {
         const url = new URL(`http://${this.host}/api.cgi`);
         const params = url.searchParams;
         params.set('cmd', 'PtzCtrl');
-        params.set('user', this.username);
-        params.set('password', this.password);
 
         const createReadable = (data: any) => {
             const pt = new PassThrough();
@@ -209,7 +213,7 @@ export class ReolinkCameraClient {
             return pt;
         }
 
-        const c1 = this.request({
+        const c1 = this.requestWithLogin({
             url,
             method: 'POST',
             responseType: 'text',
@@ -227,7 +231,7 @@ export class ReolinkCameraClient {
 
         await sleep(500);
 
-        const c2 = this.request({
+        const c2 = this.requestWithLogin({
             url,
             method: 'POST',
         }, createReadable([
@@ -273,8 +277,6 @@ export class ReolinkCameraClient {
         const url = new URL(`http://${this.host}/api.cgi`);
         const params = url.searchParams;
         params.set('cmd', 'AudioAlarmPlay');
-        params.set('user', this.username);
-        params.set('password', this.password);
         const createReadable = (data: any) => {
             const pt = new PassThrough();
             pt.write(Buffer.from(JSON.stringify(data)));
@@ -292,11 +294,11 @@ export class ReolinkCameraClient {
         else {
             alarmMode = {
                 alarm_mode: 'manul',
-                manual_switch: on? 1 : 0
+                manual_switch: on ? 1 : 0
             };
         }
 
-        const response = await this.request({
+        const response = await this.requestWithLogin({
             url,
             method: 'POST',
             responseType: 'json',
