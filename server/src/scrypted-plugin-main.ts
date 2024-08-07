@@ -8,13 +8,14 @@ import { RpcMessage } from "./rpc";
 
 function start(mainFilename: string) {
     const pluginId = process.argv[3];
-    console.log('starting plugin', pluginId);
     module.paths.push(getPluginNodePath(pluginId));
 
     if (process.argv[2] === 'child-thread') {
-        const peer = startPluginRemote(mainFilename, process.argv[3], (message, reject) => {
+        console.log('starting thread', pluginId);
+        const { port } = worker_threads.workerData as { port: worker_threads.MessagePort };
+        const peer = startPluginRemote(mainFilename, pluginId, (message, reject) => {
             try {
-                worker_threads.parentPort.postMessage(v8.serialize(message));
+                port.postMessage(v8.serialize(message));
             }
             catch (e) {
                 reject?.(e);
@@ -22,9 +23,18 @@ function start(mainFilename: string) {
         });
         peer.transportSafeArgumentTypes.add(Buffer.name);
         peer.transportSafeArgumentTypes.add(Uint8Array.name);
-        worker_threads.parentPort.on('message', message => peer.handleMessage(v8.deserialize(message)));
+        port.on('message', message => peer.handleMessage(v8.deserialize(message)));
+        port.on('messageerror', e => {
+            console.error('message error', e);
+            process.exit(1);
+        });
+        port.on('close', () => {
+            console.error('port closed');
+            process.exit(1);
+        });
     }
     else {
+        console.log('starting plugin', pluginId);
         const peer = startPluginRemote(mainFilename, process.argv[3], (message, reject, serializationContext) => process.send(message, serializationContext?.sendHandle, {
             swallowErrors: !reject,
         }, e => {

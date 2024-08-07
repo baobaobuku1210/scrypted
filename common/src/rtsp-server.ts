@@ -572,7 +572,8 @@ export class RtspClient extends RtspBase {
                 }
             }
             catch (e) {
-                deferred.reject(e as Error);
+                if (!deferred.finished)
+                    deferred.reject(e as Error);
                 this.client.destroy();
             }
         };
@@ -1123,7 +1124,7 @@ export class RtspServer {
 }
 
 export async function listenSingleRtspClient<T extends RtspServer>(options?: {
-    hostname?: string,
+    hostname: string,
     pathToken?: string,
     createServer?(duplex: Duplex): T,
 }) {

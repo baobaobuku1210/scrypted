@@ -477,7 +477,7 @@ export interface AudioStreamOptions {
   sampleRate?: number;
 }
 
-export type MediaStreamSource = "local" | "cloud";
+export type MediaStreamSource = "local" | "cloud" | "synthetic";
 export type MediaStreamTool = 'ffmpeg' | 'scrypted' | 'gstreamer';
 
 /**
@@ -1381,7 +1381,7 @@ export interface ObjectDetectionResult extends BoundingBoxResult {
   labelScore?: number;
   /**
    * A base64 encoded Float32Array that represents the vector descriptor of the detection.
-   * Can be used to compute euclidian distance to determine similarity. 
+   * Can be used to compute euclidian distance to determine similarity.
    */
   descriptor?: string;
   /**
@@ -1524,8 +1524,26 @@ export interface VideoFrameGenerator {
 /**
  * Generic bidirectional stream connection.
  */
-export interface StreamService {
-  connectStream(input?: AsyncGenerator<any, void>, options?: any): Promise<AsyncGenerator<any, void>>;
+export interface StreamService<Input, Output=Input> {
+  connectStream(input?: AsyncGenerator<Input, void>, options?: any): Promise<AsyncGenerator<Output, void>>;
+}
+/**
+ * TTY connection offered by a remote device that can be connected to
+ * by an interactive terminal interface.
+ *
+ * Implementors should also implement StreamService to handle
+ * the actual data transfer.
+ */
+export interface TTY {
+}
+/**
+ * TTYSettings allows TTY backends to query plugins for modifications
+ * to the (non-)interactive terminal environment.
+ */
+export interface TTYSettings {
+  getTTYSettings(): Promise<{
+    paths?: string[];
+  }>;
 }
 /**
  * Logger is exposed via log.* to allow writing to the Scrypted log.
@@ -1694,6 +1712,14 @@ export interface FFmpegInput extends MediaContainer {
   h264EncoderArguments?: string[];
   videoDecoderArguments?: string[];
   h264FilterArguments?: string[];
+  /**
+   * Environment variables to set when launching FFmpeg.
+   */
+  env?: { [key: string]: string };
+  /**
+   * Path to a custom FFmpeg binary.
+   */
+  ffmpegPath?: string;
 }
 export interface DeviceInformation {
   model?: string;
@@ -2005,7 +2031,7 @@ export enum MediaPlayerState {
   Paused = "Paused",
   Buffering = "Buffering",
 }
-export type SettingValue = undefined | null | string | number | boolean | string[] | number[];
+export type SettingValue = undefined | null | string | number | boolean | string[] | number[] | ClipPath;
 export type Point = [number, number];
 export type ClipPath = Point[];
 export interface Setting {
@@ -2025,6 +2051,10 @@ export interface Setting {
   combobox?: boolean;
   deviceFilter?: string;
   multiple?: boolean;
+  /**
+   * Flat that the UI should immediately apply this setting.
+   */
+  immediate?: boolean;
   value?: SettingValue;
 }
 
@@ -2036,6 +2066,7 @@ export interface LauncherApplicationInfo {
   icon?: string;
   description?: string;
   href?: string;
+  cloudHref?: string;
 }
 
 export interface LauncherApplication {
@@ -2129,6 +2160,8 @@ export enum ScryptedInterface {
   ScryptedUser = "ScryptedUser",
   VideoFrameGenerator = 'VideoFrameGenerator',
   StreamService = 'StreamService',
+  TTY = 'TTY',
+  TTYSettings = 'TTYSettings',
 
   ScryptedSystemDevice = "ScryptedSystemDevice",
   ScryptedDeviceCreator = "ScryptedDeviceCreator",
@@ -2393,6 +2426,11 @@ export interface ConnectOptions extends APIOptions {
   pluginId: string;
 }
 
+export interface ForkOptions {
+  name?: string;
+  filename?: string;
+}
+
 export interface ScryptedStatic {
   /**
    * @deprecated
@@ -2413,7 +2451,7 @@ export interface ScryptedStatic {
    * Start a new instance of the plugin, returning an instance of the new process
    * and the result of the fork method.
    */
-  fork<T>(): PluginFork<T>;
+  fork<T>(options?: ForkOptions): PluginFork<T>;
   /**
    * Initiate the Scrypted RPC wire protocol on a socket.
    * @param socket

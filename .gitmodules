@@ -1,9 +1,6 @@
 [submodule "plugins/unifi-protect/src/unifi-protect"]
 	path = external/unifi-protect
 	url = ../../koush/unifi-protect.git
-[submodule "plugins/myq/src/myq"]
-	path = plugins/myq/src/myq
-	url = ../../koush/myq.git
 [submodule "external/ring-client-api"]
 	path = external/ring-client-api
 	url = ../../koush/ring
@@ -14,9 +11,6 @@
 [submodule "external/werift"]
 	path = external/werift
 	url = ../../koush/werift-webrtc
-[submodule "plugins/zwave/file-stream-rotator"]
-	path = plugins/zwave/file-stream-rotator
-	url = ../../koush/file-stream-rotator.git
 [submodule "sdk/developer.scrypted.app"]
 	path = sdk/developer.scrypted.app
 	url = ../../koush/developer.scrypted.app

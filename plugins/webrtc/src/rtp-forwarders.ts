@@ -293,7 +293,7 @@ export async function startRtpForwarderProcess(console: Console, ffmpegInput: FF
                             }
                         });
 
-                        const audioClient = await listenZeroSingleClient();
+                        const audioClient = await listenZeroSingleClient('127.0.0.1');
                         let audioPipe: Writable;
                         killDeferred.promise.finally(() => audioClient.clientPromise.then(client => client.destroy()));
                         let rtspServer: RtspServer;
@@ -302,7 +302,11 @@ export async function startRtpForwarderProcess(console: Console, ffmpegInput: FF
                             killDeferred.promise.finally(() => r.destroy());
                             await r.handlePlayback();
                             rtspServer = r;
-                        });
+                        })
+                            .catch(e => {
+                                if (!killDeferred.finished)
+                                    killDeferred.reject(e);
+                            });
 
                         audio.ffmpegDestination = '127.0.0.1';
                         audio.srtp = undefined;
@@ -417,7 +421,7 @@ export async function startRtpForwarderProcess(console: Console, ffmpegInput: FF
             // seems better to use udp for audio timing/chop.
             const useUdp = rtspMode === 'udp';
 
-            const serverPort = await listenZeroSingleClient();
+            const serverPort = await listenZeroSingleClient('127.0.0.1');
 
             args.push(
                 '-rtsp_transport',
@@ -467,7 +471,11 @@ export async function startRtpForwarderProcess(console: Console, ffmpegInput: FF
                         }
                     }
                 }
-            });
+            })
+                .catch(e => {
+                    if (!killDeferred.finished)
+                        killDeferred.reject(e);
+                });
         }
 
         safePrintFFmpegArguments(console, args);
@@ -499,9 +507,14 @@ export async function startRtpForwarderProcess(console: Console, ffmpegInput: FF
         sdpDeferred.resolve(rtspSdp);
     }
 
-    if (!rtspClientHooked) {
-        process.nextTick(() => {
-            rtspClient?.readLoop().catch(() => { }).finally(() => killDeferred.resolve(undefined));
+    if (!rtspClientHooked && rtspClient) {
+        process.nextTick(async () => {
+            try {
+                await rtspClient.readLoop();
+            }
+            catch (e) {
+            }
+            killDeferred.resolve(undefined);
         });
     }
 

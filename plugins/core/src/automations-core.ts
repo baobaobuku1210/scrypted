@@ -31,21 +31,11 @@ export class AutomationCore extends ScryptedDeviceBase implements DeviceProvider
                 await this.reportAutomation(updatePluginsNativeId, 'Autoupdate Plugins');
                 updatePlugins = new Automation(updatePluginsNativeId);
                 updatePlugins.storage.setItem('data', JSON.stringify(updatePluginsData));
+                updatePlugins.data = updatePlugins.storageSettings.values.data;
+                updatePlugins.bind();
                 this.automations.set(updatePluginsNativeId, updatePlugins);
             }
         })();
-
-        // update the automations devices on storage change.
-        // todo: make this use setting api
-        sdk.systemManager.listen((eventSource, eventDetails, eventData) => {
-            if (eventDetails.eventInterface === 'Storage') {
-                const ids = [...this.automations.values()].map(a => a.id);
-                if (ids.includes(eventSource.id)) {
-                    const automation = [...this.automations.values()].find(a => a.id === eventSource.id);
-                    automation.bind();
-                }
-            }
-        });
     }
 
     async getReadmeMarkdown(): Promise<string> {

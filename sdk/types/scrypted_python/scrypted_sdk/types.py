@@ -4,7 +4,7 @@ try:
     from typing import TypedDict
 except:
     from typing_extensions import TypedDict
-from typing import Union, Any
+from typing import Union, Any, AsyncGenerator
 
 from .other import *
 
@@ -182,6 +182,8 @@ class ScryptedInterface(str, Enum):
     Settings = "Settings"
     StartStop = "StartStop"
     StreamService = "StreamService"
+    TTY = "TTY"
+    TTYSettings = "TTYSettings"
     TamperSensor = "TamperSensor"
     TemperatureSetting = "TemperatureSetting"
     Thermometer = "Thermometer"
@@ -517,6 +519,8 @@ class FFmpegInput(TypedDict):
 
     container: str
     destinationVideoBitrate: float
+    env: Any  # Environment variables to set when launching FFmpeg.
+    ffmpegPath: str  # Path to a custom FFmpeg binary.
     h264EncoderArguments: list[str]
     h264FilterArguments: list[str]
     inputArguments: list[str]
@@ -569,6 +573,7 @@ class HumiditySettingStatus(TypedDict):
 
 class LauncherApplicationInfo(TypedDict):
 
+    cloudHref: str
     description: str
     href: str
     icon: str  # Supports: mdi-icon, fa-icon, urls.
@@ -821,6 +826,7 @@ class Setting(TypedDict):
     description: str
     deviceFilter: str
     group: str
+    immediate: bool  # Flat that the UI should immediately apply this setting.
     key: str
     multiple: bool
     placeholder: str
@@ -1201,7 +1207,7 @@ class ObjectDetection:
     async def detectObjects(self, mediaObject: MediaObject, session: ObjectDetectionSession = None) -> ObjectsDetected:
         pass
 
-    async def generateObjectDetections(self, videoFrames: MediaObject | VideoFrame, session: ObjectDetectionGeneratorSession) -> ObjectDetectionGeneratorResult:
+    async def generateObjectDetections(self, videoFrames: MediaObject | AsyncGenerator[VideoFrame, None], session: ObjectDetectionGeneratorSession) -> AsyncGenerator[ObjectDetectionGeneratorResult, None]:
         pass
 
     async def getDetectionModel(self, settings: Any = None) -> ObjectDetectionModel:
@@ -1462,7 +1468,20 @@ class StartStop:
 class StreamService:
     """Generic bidirectional stream connection."""
 
-    async def connectStream(self, input: Any = None, options: Any = None) -> Any:
+    async def connectStream(self, input: AsyncGenerator[Any, None] = None, options: Any = None) -> AsyncGenerator[Any, None]:
+        pass
+
+
+class TTY:
+    """TTY connection offered by a remote device that can be connected to by an interactive terminal interface.  Implementors should also implement StreamService to handle the actual data transfer."""
+
+
+    pass
+
+class TTYSettings:
+    """TTYSettings allows TTY backends to query plugins for modifications to the (non-)interactive terminal environment."""
+
+    async def getTTYSettings(self) -> Any:
         pass
 
 
@@ -1536,7 +1555,7 @@ class VideoClips:
 
 class VideoFrameGenerator:
 
-    async def generateVideoFrames(self, mediaObject: MediaObject, options: VideoFrameGeneratorOptions = None) -> VideoFrame:
+    async def generateVideoFrames(self, mediaObject: MediaObject, options: VideoFrameGeneratorOptions = None) -> AsyncGenerator[VideoFrame, None]:
         pass
 
 
@@ -1917,6 +1936,7 @@ class ScryptedInterfaceMethods(str, Enum):
     getScryptedUserAccessControl = "getScryptedUserAccessControl"
     generateVideoFrames = "generateVideoFrames"
     connectStream = "connectStream"
+    getTTYSettings = "getTTYSettings"
 
 class DeviceState:
 
@@ -3123,6 +3143,18 @@ ScryptedInterfaceDescriptors = {
     "name": "StreamService",
     "methods": [
       "connectStream"
+    ],
+    "properties": []
+  },
+  "TTY": {
+    "name": "TTY",
+    "methods": [],
+    "properties": []
+  },
+  "TTYSettings": {
+    "name": "TTYSettings",
+    "methods": [
+      "getTTYSettings"
     ],
     "properties": []
   },

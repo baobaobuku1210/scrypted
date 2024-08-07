@@ -89,11 +89,11 @@ export async function httpFetch<T extends HttpFetchOptions<Readable>>(options: T
         controller = new AbortController();
         timeout = setTimeout(() => controller.abort(), options.timeout);
 
-        options.signal?.addEventListener('abort', () => controller.abort('abort'));
+        options.signal?.addEventListener('abort', () => controller.abort(options.signal?.reason));
     }
 
     const signal = controller?.signal || options.signal;
-    signal?.addEventListener('abort', () => request.destroy(new Error('abort')));
+    signal?.addEventListener('abort', () => request.destroy(new Error(options.signal?.reason || 'abort')));
 
     const nodeHeaders: Record<string, string[]> = {};
     for (const [k, v] of headers) {
@@ -122,9 +122,12 @@ export async function httpFetch<T extends HttpFetchOptions<Readable>>(options: T
     try {
         const [response] = await once(request, 'response') as [IncomingMessage];
 
-        if (!options?.ignoreStatusCode) {
+
+        if (options?.checkStatusCode === undefined || options?.checkStatusCode) {
             try {
-                checkStatus(response.statusCode);
+                const checker = typeof options?.checkStatusCode === 'function' ? options.checkStatusCode : checkStatus;
+                if (!checker(response.statusCode))
+                    throw new Error(`http response statusCode ${response.statusCode}`);
             }
             catch (e) {
                 readMessageBuffer(response).catch(() => { });

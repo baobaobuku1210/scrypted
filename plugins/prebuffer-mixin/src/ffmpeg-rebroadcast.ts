@@ -134,6 +134,7 @@ export async function startParserSession<T extends string>(ffmpegInput: FFmpegIn
 
 
     const args = ffmpegInput.inputArguments.slice();
+    const env = ffmpegInput.env ? { ...process.env, ...ffmpegInput.env } : undefined;
 
     const ensureActive = (killed: () => void) => {
         if (!isActive) {
@@ -151,7 +152,7 @@ export async function startParserSession<T extends string>(ffmpegInput: FFmpegIn
         const parser: StreamParser = options.parsers[container as T];
 
         if (parser.tcpProtocol) {
-            const tcp = await listenZeroSingleClient();
+            const tcp = await listenZeroSingleClient('127.0.0.1');
             const url = new URL(parser.tcpProtocol);
             url.port = tcp.port.toString();
             args.push(
@@ -189,8 +190,9 @@ export async function startParserSession<T extends string>(ffmpegInput: FFmpegIn
     // start ffmpeg process with child process pipes
     args.unshift('-hide_banner');
     safePrintFFmpegArguments(console, args);
-    const cp = child_process.spawn(await mediaManager.getFFmpegPath(), args, {
+    const cp = child_process.spawn(ffmpegInput.ffmpegPath || await mediaManager.getFFmpegPath(), args, {
         stdio,
+        env,
     });
     ffmpegLogInitialOutput(console, cp, undefined, options?.storage);
     cp.on('exit', () => kill(new Error('ffmpeg exited')));

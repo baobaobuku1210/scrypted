@@ -1,27 +1,31 @@
-import type { CompileFunctionOptions } from 'vm';
-import { RpcPeer } from "./rpc";
+import type { RpcPeer } from "./rpc";
 
-type CompileFunction = (code: string, params?: ReadonlyArray<string>, options?: CompileFunctionOptions) => Function;
+export interface CompileFunctionOptions {
+    filename?: string;
+}
 
-function compileFunction(code: string, params?: ReadonlyArray<string>, options?: CompileFunctionOptions): any {
-    params = params || [];
-    const f = `(function(${params.join(',')}) {;${code};})`;
-    return eval(f);
+function compileFunction(): any {
+    // this is a hacky way of preventing the closure from capturing the code variable which may be a large blob.
+    try {
+        // "new Function" can't be used directly because it injects newlines per parameter,
+        // which causes source mapping to get misaligned.
+        // However, using eval inside a function works, because there are no parameters,
+        // and the "new Function" addresses the closure capture issue.
+        const f = new Function('return eval(globalThis.compileFunctionShim)');
+        return f();
+    }
+    finally {
+        delete (globalThis as any).compileFunctionShim;
+    }
 }
 
 export function evalLocal<T>(peer: RpcPeer, script: string, filename?: string, coercedParams?: { [name: string]: any }): T {
     const params = Object.assign({}, peer.params, coercedParams);
-    let compile: CompileFunction;
-    try {
-        // prevent bundlers from trying to include non-existent vm module.
-        compile = module[`require`]('vm').compileFunction;
-    }
-    catch (e) {
-        compile = compileFunction;
-    }
-    const f = compile(script, Object.keys(params), {
-        filename,
-    });
+    let code = script;
+    if (filename)
+        code = `${code}\n//# sourceURL=${filename}\n`;
+    (globalThis as any).compileFunctionShim = `(function(${Object.keys(params).join(',')}) {;${code}\n;})`;
+    const f = compileFunction();
     const value = f(...Object.values(params));
     return value;
 }

@@ -590,6 +590,9 @@ class PrebufferSession {
         // if (!userInputArguments && (ffmpegInput.container === 'rtmp' || ffmpegInput.url?.startsWith('rtmp:')))
         //   ffmpegInput.inputArguments.unshift('-use_wallclock_as_timestamps', '1');
 
+        if (ffmpegInput.h264EncoderArguments?.length) {
+          vcodec = [...ffmpegInput.h264EncoderArguments];
+        }
         // extraOutputArguments must contain full codec information
         if (extraOutputArguments) {
           vcodec = [...extraOutputArguments.split(' ').filter(d => !!d)];
@@ -1404,6 +1407,13 @@ class PrebufferMixin extends SettingsMixinDeviceBase<VideoCamera> implements Vid
         log.a(`${this.name} is a cloud camera. Prebuffering maintains a persistent stream and will not be enabled by default. You must enable the Prebuffer stream manually.`)
       }
     }
+    if (this.storage.getItem('warnedSynthetic') !== 'true') {
+      const synthetic = msos?.find(mso => mso.source === 'synthetic');
+      if (synthetic) {
+        this.storage.setItem('warnedSynthetic', 'true');
+        log.a(`${this.name} is a synthetic stream requiring substantial transcoding overhead. Prebuffering maintains a persistent stream and will not be enabled by default. You must enable the Prebuffer stream manually.`)
+      }
+    }
 
     if (!enabledIds.length)
       this.online = true;
@@ -1709,7 +1719,7 @@ export class RebroadcastPlugin extends AutoenableMixinProvider implements MixinP
     const u = new URL(url);
     if (!u.protocol.startsWith('tcp'))
       throw new Error('rfc4751 url must be tcp');
-    const { clientPromise, url: clientUrl } = await listenZeroSingleClient();
+    const { clientPromise, url: clientUrl } = await listenZeroSingleClient('127.0.0.1');
     const ffmpeg: FFmpegInput = {
       url: clientUrl,
       inputArguments: [
