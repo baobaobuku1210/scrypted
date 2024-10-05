@@ -44,6 +44,11 @@ systemctl disable scrypted.service 2> /dev/null
 USER_HOME=$(eval echo ~$SERVICE_USER)
 SCRYPTED_HOME=$USER_HOME/.scrypted
 mkdir -p $SCRYPTED_HOME
+# remove various things from a previous local install.
+rm -rf $SCRYPTED_HOME/node_modules
+rm -rf $SCRYPTED_HOME/install.json
+rm -rf $SCRYPTED_HOME/package.json
+rm -rf $SCRYPTED_HOME/package-lock.json
 
 set -e
 cd $SCRYPTED_HOME
@@ -69,7 +74,13 @@ then
         sed -i 's/'#' "\/dev\/dri/"\/dev\/dri/g' $DOCKER_COMPOSE_YML
     fi
 else
+    # uncomment lxc specific stuff
     sed -i 's/'#' lxc //g' $DOCKER_COMPOSE_YML
+    # never restart, systemd will handle it
+    sed -i 's/restart: unless-stopped/restart: no/g' $DOCKER_COMPOSE_YML
+    # remove the watchtower env.
+    sed -i "/SCRYPTED_WEBHOOK_UPDATE/d" $DOCKER_COMPOSE_YML
+
     sudo systemctl stop apparmor || true
     sudo apt -y purge apparmor || true
 fi
@@ -98,8 +109,41 @@ set -e
 
 echo "docker compose pull"
 sudo -u $SERVICE_USER docker compose pull
-echo "docker compose up -d"
-sudo -u $SERVICE_USER docker compose up -d
+
+if [ -z "$SCRYPTED_LXC" ]
+then
+    echo "docker compose up -d"
+    sudo -u $SERVICE_USER docker compose up -d
+else
+    export DOCKER_COMPOSE_SH=$SCRYPTED_HOME/docker-compose.sh
+
+    curl https://raw.githubusercontent.com/koush/scrypted/main/install/proxmox/docker-compose.sh > $DOCKER_COMPOSE_SH
+
+    chmod +x $DOCKER_COMPOSE_SH
+
+    cat > /etc/systemd/system/scrypted.service <<EOT
+[Unit]
+Description=Scrypted service
+After=network.target
+
+[Service]
+User=root
+Group=root
+Type=simple
+ExecStart=$DOCKER_COMPOSE_SH
+Restart=always
+RestartSec=3
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target
+EOT
+
+    systemctl daemon-reload
+    systemctl enable scrypted.service
+    systemctl restart scrypted.service
+fi
 
 echo
 echo

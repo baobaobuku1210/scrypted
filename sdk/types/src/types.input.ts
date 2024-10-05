@@ -949,12 +949,15 @@ export interface VideoCameraMask {
 
 export enum PanTiltZoomMovement {
   Absolute = "Absolute",
-  Relative = "Relative"
+  Relative = "Relative",
+  Continuous = "Continuous",
+  Preset = "Preset",
+  Home = 'Home',
 }
 
 export interface PanTiltZoomCommand {
   /**
-   * Specify the movement origin. If unspecified, the movement will be relative to the current position.
+   * Specify the movement type. If unspecified, the movement will be relative to the current position.
    */
   movement?: PanTiltZoomMovement;
   /**
@@ -985,13 +988,27 @@ export interface PanTiltZoomCommand {
      * Ranges between 0 and 1 for max zoom.
      */
     zoom?: number;
-  }
+  };
+  /**
+   * The duration of the movement in milliseconds.
+   */
+  timeout?: number;
+  /**
+   * The preset to move to.
+   */
+  preset?: string;
 }
 
 export interface PanTiltZoomCapabilities {
   pan?: boolean;
   tilt?: boolean;
   zoom?: boolean;
+  /**
+   * Preset id mapped to friendly name.
+   */
+  presets?: {
+    [key: string]: string;
+  };
 }
 export interface PanTiltZoom {
   ptzCapabilities?: PanTiltZoomCapabilities;

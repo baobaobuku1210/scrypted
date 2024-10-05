@@ -64,6 +64,9 @@ class MediaPlayerState(str, Enum):
 class PanTiltZoomMovement(str, Enum):
 
     Absolute = "Absolute"
+    Continuous = "Continuous"
+    Home = "Home"
+    Preset = "Preset"
     Relative = "Relative"
 
 class ScryptedDeviceType(str, Enum):
@@ -703,15 +706,18 @@ class ObjectsDetected(TypedDict):
 class PanTiltZoomCapabilities(TypedDict):
 
     pan: bool
+    presets: Any  # Preset id mapped to friendly name.
     tilt: bool
     zoom: bool
 
 class PanTiltZoomCommand(TypedDict):
 
-    movement: PanTiltZoomMovement  # Specify the movement origin. If unspecified, the movement will be relative to the current position.
+    movement: PanTiltZoomMovement  # Specify the movement type. If unspecified, the movement will be relative to the current position.
     pan: float  # Ranges between -1 and 1.
+    preset: str  # The preset to move to.
     speed: Any  # The speed of the movement.
     tilt: float  # Ranges between -1 and 1.
+    timeout: float  # The duration of the movement in milliseconds.
     zoom: float  # Ranges between 0 and 1 for max zoom.
 
 class Position(TypedDict):
